@@ -148,7 +148,7 @@ function buildStudentsTab() {
   const all = StorageManager.getAllStudents().filter(s => !s.isAdmin);
 
   return `
-    <!-- Action bar: search + Add Student -->
+    <!-- Action bar: search + Add + QR -->
     <div style="display:flex;gap:8px;margin-bottom:12px">
       <div style="position:relative;flex:1">
         <i class="bi bi-search" style="position:absolute;left:12px;top:50%;
@@ -162,11 +162,19 @@ function buildStudentsTab() {
             box-sizing:border-box">
       </div>
       <button onclick="openAddStudentModal()"
-        style="padding:10px 14px;border-radius:12px;border:none;cursor:pointer;
+        style="padding:10px 12px;border-radius:12px;border:none;cursor:pointer;
           background:linear-gradient(135deg,#1D4ED8,#3B82F6);color:#fff;
           font-size:.78rem;font-weight:900;white-space:nowrap;
           box-shadow:0 4px 12px rgba(29,78,216,.3);display:flex;align-items:center;gap:5px">
         <i class="bi bi-person-plus-fill"></i> Add
+      </button>
+      <button onclick="openQRCardsModal()"
+        title="Generate QR Codes for all students"
+        style="padding:10px 12px;border-radius:12px;border:none;cursor:pointer;
+          background:linear-gradient(135deg,#0F766E,#14B8A6);color:#fff;
+          font-size:.78rem;font-weight:900;white-space:nowrap;
+          box-shadow:0 4px 12px rgba(15,118,110,.3);display:flex;align-items:center;gap:5px">
+        <i class="bi bi-qr-code"></i> QR
       </button>
     </div>
 
@@ -235,6 +243,13 @@ function buildStudentRows(students) {
             style="width:30px;height:30px;border-radius:8px;border:none;cursor:pointer;
               background:#EFF6FF;display:flex;align-items:center;justify-content:center">
             <i class="bi bi-pencil-fill" style="color:var(--clr-blue);font-size:.75rem"></i>
+          </button>
+          <!-- QR code -->
+          <button onclick="openStudentQRCard('${s.accountNo}')"
+            title="View student QR code"
+            style="width:30px;height:30px;border-radius:8px;border:none;cursor:pointer;
+              background:#ECFDF5;display:flex;align-items:center;justify-content:center">
+            <i class="bi bi-qr-code" style="color:#0F766E;font-size:.75rem"></i>
           </button>
           <!-- Top up -->
           <button onclick="openTopUpModal('${s.accountNo}')"

@@ -50,6 +50,11 @@ function navigate(screenName) {
 
   highlightFooterTab(screenName);
 
+  // Stop QR scanner when leaving auth screen
+  if (screenName !== "auth" && typeof stopQROnNavigate === "function") {
+    stopQROnNavigate();
+  }
+
   // Screen-specific render calls
   if (screenName === "home")    renderHome();
   if (screenName === "history") renderHistory();

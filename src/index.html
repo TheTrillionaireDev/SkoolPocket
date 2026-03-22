@@ -10,6 +10,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/animation.css">
   <link href="./output.css" rel="stylesheet">
+  <!-- QR Code scanner library -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- QR Code generator library (for admin to generate student QR cards) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <style>
     /* ───────────────────────────────────────────────────────────────
@@ -157,14 +161,6 @@
       transition: opacity 0.28s ease;
     }
 
-    /* ── Shop: product card image hover lift ─────────────────────── */
-    .product-card {
-      transition: transform 0.18s ease, box-shadow 0.18s ease;
-    }
-    .product-card:active {
-      transform: scale(0.97);
-    }
-
     /* ── Shop: line-clamp for descriptions ───────────────────────── */
     .line-clamp-1 {
       overflow: hidden;
@@ -190,13 +186,26 @@
     }
     #cart-badge { animation: badgePop 0.25s ease; }
 
-    /* ── FIX 1: Overlays from shop.js are appended to <body> with
-       z-index 200-500, so they always appear above the z-50 footer.
-       These rules ensure nothing clips them. ─────────────────────── */
+    /* ── QR scan line animation ──────────────────────────────────── */
+    @keyframes scanLine {
+      0%   { top: 10%; opacity: 1; }
+      50%  { top: 88%; opacity: 1; }
+      100% { top: 10%; opacity: 1; }
+    }
+
+    /* ── QR reader overrides (removes html5-qrcode default chrome) ── */
+    #qr-reader { border: none !important; }
+    #qr-reader video { border-radius: 16px !important; }
+    #qr-reader img  { display: none !important; }
+    #qr-reader__scan_region { border: none !important; }
+    #qr-reader__dashboard { display: none !important; }
+
+    /* ── Shop overlays are appended to <body> at z-index 200-500,
+       always above the z-50 footer ──────────────────────────────── */
     #shop-overlays { pointer-events: none; }
     #shop-overlays > * { pointer-events: auto; }
 
-    /* ── FIX 2: Success receipt checkmark bounce ─────────────────── */
+    /* ── Success receipt checkmark bounce ────────────────────────── */
     @keyframes checkBounce {
       0%   { transform: scale(0.4); opacity: 0; }
       60%  { transform: scale(1.15); opacity: 1; }
@@ -204,9 +213,8 @@
       100% { transform: scale(1); opacity: 1; }
     }
 
-    /* ── Floating cart bar: sit just above footer ────────────────── */
+    /* ── Floating cart bar: centred above footer ─────────────────── */
     #floating-cart-bar {
-      /* override any inline transform so centering works */
       left: 50% !important;
       transform: translateX(-50%) !important;
       width: 100% !important;
@@ -262,67 +270,102 @@
     <div class="mx-5 mt-12 bg-white rounded-3xl p-6 section-card animate-fade-in">
       <h2 class="font-bold text-lg mb-5" style="color:var(--clr-text)">Sign in to your wallet</h2>
 
-      <form id="checkIn-form" class="flex flex-col gap-4" onsubmit="return false">
-
-        <div>
-          <label class="text-xs font-bold mb-1.5 block uppercase tracking-wide"
-            style="color:var(--clr-text-muted)" for="student-id">
-            Account Number
-          </label>
-          <div class="relative">
-            <i class="bi bi-person-badge absolute left-3 top-1/2 -translate-y-1/2 text-lg"
-              style="color:var(--clr-text-faint)"></i>
-            <input type="text" id="student-id"
-              placeholder="e.g. SBIS001"
-              autocomplete="off"
-              class="w-full pl-10 pr-4 py-3 rounded-xl text-sm font-semibold transition-all"
-              style="background:var(--clr-bg); color:var(--clr-text); border: 1.5px solid var(--clr-border)">
-          </div>
-        </div>
-
-        <div>
-          <label class="text-xs font-bold mb-1.5 block uppercase tracking-wide"
-            style="color:var(--clr-text-muted)" for="password">
-            Password
-          </label>
-          <div class="relative">
-            <i class="bi bi-lock absolute left-3 top-1/2 -translate-y-1/2 text-lg"
-              style="color:var(--clr-text-faint)"></i>
-            <input type="password" id="password"
-              placeholder="Enter your password"
-              class="w-full pl-10 pr-4 py-3 rounded-xl text-sm font-semibold transition-all"
-              style="background:var(--clr-bg); color:var(--clr-text); border: 1.5px solid var(--clr-border)">
-          </div>
-        </div>
-
-        <button id="checkinBtn" type="button"
-          class="w-full py-3.5 rounded-xl font-bold text-white text-base mt-2 transition-all active:scale-95 active:opacity-90"
-          style="background: linear-gradient(135deg, var(--clr-blue) 0%, var(--clr-blue-lg) 100%);
-                 box-shadow: 0 4px 20px rgba(29,78,216,.35)">
-          Sign In
+      <!-- Manual / QR toggle tabs -->
+      <div class="flex gap-2 mb-5 p-1 rounded-2xl" style="background:var(--clr-bg)">
+        <button id="tab-manual" onclick="showLoginTab('manual')"
+          class="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
+          style="background:var(--clr-blue);color:#fff;box-shadow:0 2px 8px rgba(29,78,216,.3)">
+          <i class="bi bi-keyboard"></i> Manual
         </button>
-      </form>
+        <button id="tab-qr" onclick="showLoginTab('qr')"
+          class="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
+          style="background:transparent;color:var(--clr-text-muted)">
+          <i class="bi bi-qr-code-scan"></i> Scan QR
+        </button>
+      </div>
 
-      <!-- Login credentials hint
-      <div class="mt-4 p-3 rounded-2xl" style="background:var(--clr-bg)">
-        <p class="text-center text-xs font-bold mb-2" style="color:var(--clr-text-muted)">
-          Demo Credentials
-        </p>
-        <div class="flex flex-col gap-1.5 text-xs" style="color:var(--clr-text-faint)">
-          <div class="flex justify-between">
-            <span>Student 1:</span>
-            <span class="font-bold" style="color:var(--clr-blue)">SBIS001 / sbis001</span>
+      <!-- Manual login form -->
+      <div id="login-manual">
+        <form id="checkIn-form" class="flex flex-col gap-4" onsubmit="return false">
+          <div>
+            <label class="text-xs font-bold mb-1.5 block uppercase tracking-wide"
+              style="color:var(--clr-text-muted)" for="student-id">
+              Account Number
+            </label>
+            <div class="relative">
+              <i class="bi bi-person-badge absolute left-3 top-1/2 -translate-y-1/2 text-lg"
+                style="color:var(--clr-text-faint)"></i>
+              <input type="text" id="student-id"
+                placeholder="e.g. SBIS001"
+                autocomplete="off"
+                class="w-full pl-10 pr-4 py-3 rounded-xl text-sm font-semibold transition-all"
+                style="background:var(--clr-bg); color:var(--clr-text); border: 1.5px solid var(--clr-border)">
+            </div>
           </div>
-          <div class="flex justify-between">
-            <span>Student 2:</span>
-            <span class="font-bold" style="color:var(--clr-blue)">SBIS002 / sbis002</span>
+          <div>
+            <label class="text-xs font-bold mb-1.5 block uppercase tracking-wide"
+              style="color:var(--clr-text-muted)" for="password">
+              Password
+            </label>
+            <div class="relative">
+              <i class="bi bi-lock absolute left-3 top-1/2 -translate-y-1/2 text-lg"
+                style="color:var(--clr-text-faint)"></i>
+              <input type="password" id="password"
+                placeholder="Enter your password"
+                class="w-full pl-10 pr-4 py-3 rounded-xl text-sm font-semibold transition-all"
+                style="background:var(--clr-bg); color:var(--clr-text); border: 1.5px solid var(--clr-border)">
+            </div>
           </div>
-          <div class="flex justify-between">
-            <span>Admin:</span>
-            <span class="font-bold" style="color:var(--clr-blue)">ADMIN / admin2024</span>
+          <button id="checkinBtn" type="button"
+            class="w-full py-3.5 rounded-xl font-bold text-white text-base mt-2 transition-all active:scale-95 active:opacity-90"
+            style="background: linear-gradient(135deg, var(--clr-blue) 0%, var(--clr-blue-lg) 100%);
+                   box-shadow: 0 4px 20px rgba(29,78,216,.35)">
+            Sign In
+          </button>
+        </form>
+      </div>
+
+      <!-- QR Scanner panel -->
+      <div id="login-qr" style="display:none">
+        <!-- Camera viewport -->
+        <div style="position:relative;border-radius:20px;overflow:hidden;
+          background:#0B1E5B;margin-bottom:14px">
+          <div id="qr-reader" style="width:100%"></div>
+          <!-- Scan frame overlay -->
+          <div style="position:absolute;inset:0;display:flex;align-items:center;
+            justify-content:center;pointer-events:none">
+            <div style="width:200px;height:200px;position:relative">
+              <!-- Corner brackets -->
+              <div style="position:absolute;top:0;left:0;width:32px;height:32px;
+                border-top:3px solid #3B82F6;border-left:3px solid #3B82F6;border-radius:4px 0 0 0"></div>
+              <div style="position:absolute;top:0;right:0;width:32px;height:32px;
+                border-top:3px solid #3B82F6;border-right:3px solid #3B82F6;border-radius:0 4px 0 0"></div>
+              <div style="position:absolute;bottom:0;left:0;width:32px;height:32px;
+                border-bottom:3px solid #3B82F6;border-left:3px solid #3B82F6;border-radius:0 0 0 4px"></div>
+              <div style="position:absolute;bottom:0;right:0;width:32px;height:32px;
+                border-bottom:3px solid #3B82F6;border-right:3px solid #3B82F6;border-radius:0 0 4px 0"></div>
+              <!-- Animated scan line -->
+              <div id="qr-scan-line" style="position:absolute;left:4px;right:4px;
+                height:2px;background:linear-gradient(90deg,transparent,#3B82F6,transparent);
+                top:50%;animation:scanLine 2s ease-in-out infinite"></div>
+            </div>
           </div>
         </div>
-      </div> -->
+        <!-- Status -->
+        <div id="qr-status" style="text-align:center;padding:10px;border-radius:14px;
+          background:var(--clr-bg);margin-bottom:14px">
+          <p style="font-size:.82rem;font-weight:700;color:var(--clr-text-muted)">
+            <i class="bi bi-camera"></i> Point camera at student QR code
+          </p>
+        </div>
+        <!-- Cancel -->
+        <button onclick="stopQRScanner()"
+          style="width:100%;padding:12px;border-radius:14px;background:#F1F5F9;
+            color:var(--clr-text-muted);font-weight:800;font-size:.9rem;border:none;cursor:pointer">
+          <i class="bi bi-x-circle"></i> Cancel
+        </button>
+      </div>
+
     </div>
   </section>
 
@@ -496,7 +539,9 @@
   <script src="js/profile.js"></script>
   <!-- 8. Admin dashboard -->
   <script src="js/admin.js"></script>
-  <!-- 9. App bootstrap — always last -->
+  <!-- 9. QR scanner logic -->
+  <script src="js/qr.js"></script>
+  <!-- 10. App bootstrap — always last -->
   <script src="js/app.js"></script>
 
 </body>
