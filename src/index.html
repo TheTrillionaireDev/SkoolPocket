@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkoolPocket — Student Wallet</title>
+  <link href="css/output.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/animation.css">
+  <link href="./output.css" rel="stylesheet">
+
+  <style>
+    /* ───────────────────────────────────────────────────────────────
+       CSS DESIGN TOKENS
+    ─────────────────────────────────────────────────────────────── */
+    :root {
+      --clr-blue:       #1D4ED8;
+      --clr-blue-lg:    #3B82F6;
+      --clr-blue-dk:    #1E3A8A;
+      --clr-yellow:     #FACC15;
+      --clr-yellow-dk:  #CA8A04;
+      --clr-green:      #22C55E;
+      --clr-green-dk:   #16A34A;
+      --clr-red:        #EF4444;
+
+      --clr-bg:         #F0F4FF;
+      --clr-card:       #FFFFFF;
+      --clr-card-hover: #F1F5F9;
+      --clr-border:     #E2E8F0;
+      --clr-text:       #1E293B;
+      --clr-text-muted: #64748B;
+      --clr-text-faint: #94A3B8;
+
+      --radius: 1rem;
+      --font:   'Nunito', sans-serif;
+    }
+
+    * { font-family: var(--font); box-sizing: border-box; }
+
+    body {
+      background: var(--clr-bg);
+      min-height: 100dvh;
+      max-width: 480px;     /* keeps it phone-width on desktop */
+      margin: 0 auto;
+      overflow-x: hidden;
+    }
+
+    /* ── Screens ─────────────────────────────────────────────────── */
+    .screen { width: 100%; }
+
+    /* ── Cards ───────────────────────────────────────────────────── */
+    .section-card {
+      border-radius: 1.25rem;
+      box-shadow: 0 2px 16px rgba(30,58,138,.06);
+    }
+
+    /* ── Balance card gradient ───────────────────────────────────── */
+    .balance-card {
+      background: linear-gradient(135deg, #1D4ED8 0%, #3B82F6 50%, #1D4ED8 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .balance-card::before {
+      content: "";
+      position: absolute;
+      width: 200px; height: 200px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.06);
+      top: -60px; right: -40px;
+      pointer-events: none;
+    }
+    .balance-card::after {
+      content: "";
+      position: absolute;
+      width: 140px; height: 140px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.05);
+      bottom: -40px; left: -30px;
+      pointer-events: none;
+    }
+
+    /* ── Shake animation for wrong password ──────────────────────── */
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%      { transform: translateX(-8px); }
+      40%      { transform: translateX(8px); }
+      60%      { transform: translateX(-6px); }
+      80%      { transform: translateX(6px); }
+    }
+    .shake { animation: shake 0.5s ease; }
+
+    /* ── Fade in ─────────────────────────────────────────────────── */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in { animation: fadeIn .35s ease forwards; }
+
+    /* ── Auth input focus ────────────────────────────────────────── */
+    input:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--clr-blue-lg);
+    }
+
+    /* ── App-level scroll ────────────────────────────────────────── */
+    #app-wrapper { position: relative; height: 100dvh; overflow: hidden; }
+
+    /* ── Footer ──────────────────────────────────────────────────── */
+    #app-footer {
+      background: #fff;
+      border-top: 1px solid var(--clr-border);
+      box-shadow: 0 -4px 20px rgba(30,58,138,.06);
+    }
+
+    /* ── Shop: hide scrollbar on popular row ─────────────────────── */
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+
+    /* ── Shop: product card hover lift ──────────────────────────── */
+    .product-card {
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .product-card:active {
+      transform: scale(0.97);
+    }
+
+    /* ── Floating cart bar entrance animation ────────────────────── */
+    @keyframes slideUpIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    #floating-cart-bar:not(.hidden) {
+      animation: slideUpIn 0.25s ease forwards;
+    }
+
+    /* ── Success overlay checkmark pulse ──────────────────────────── */
+    @keyframes checkPulse {
+      0%   { transform: scale(0.5); opacity: 0; }
+      60%  { transform: scale(1.1); }
+      100% { transform: scale(1);   opacity: 1; }
+    }
+    #success-overlay:not(.hidden) .bi-check2 {
+      animation: checkPulse 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    }
+
+    /* ── Shop: cart drawer & modal smooth slide ──────────────────── */
+    #cart-panel,
+    #checkout-card {
+      transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    #cart-backdrop {
+      transition: opacity 0.28s ease;
+    }
+
+    /* ── Shop: product card image hover lift ─────────────────────── */
+    .product-card {
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    .product-card:active {
+      transform: scale(0.97);
+    }
+
+    /* ── Shop: line-clamp for descriptions ───────────────────────── */
+    .line-clamp-1 {
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+    }
+
+    /* ── Success overlay bounce ──────────────────────────────────── */
+    @keyframes bounceOnce {
+      0%   { transform: scale(0.5); opacity: 0; }
+      60%  { transform: scale(1.2); }
+      80%  { transform: scale(0.95); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-bounce-once { animation: bounceOnce 0.6s ease forwards; }
+
+    /* ── Cart badge pulse on add ─────────────────────────────────── */
+    @keyframes badgePop {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.4); }
+      100% { transform: scale(1); }
+    }
+    #cart-badge { animation: badgePop 0.25s ease; }
+
+    /* ── FIX 1: Overlays from shop.js are appended to <body> with
+       z-index 200-500, so they always appear above the z-50 footer.
+       These rules ensure nothing clips them. ─────────────────────── */
+    #shop-overlays { pointer-events: none; }
+    #shop-overlays > * { pointer-events: auto; }
+
+    /* ── FIX 2: Success receipt checkmark bounce ─────────────────── */
+    @keyframes checkBounce {
+      0%   { transform: scale(0.4); opacity: 0; }
+      60%  { transform: scale(1.15); opacity: 1; }
+      80%  { transform: scale(0.95); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* ── Floating cart bar: sit just above footer ────────────────── */
+    #floating-cart-bar {
+      /* override any inline transform so centering works */
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      width: 100% !important;
+      max-width: 480px !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─────────────────────────────────────────────────────────────
+       SPLASH SCREEN
+  ───────────────────────────────────────────────────────────────── -->
+  <section id="splash-screen" class="screen h-screen flex flex-col justify-center items-center gap-4"
+    style="background: linear-gradient(160deg, #f8f8f8 0%, #d6e6ff 100%)">
+    <img src="/src/assets/image/SkoolPocket Logo(1)(1).png" alt="SkoolPocket" width="200"
+      class="animate-fade-in drop-shadow-xl"
+      onerror="this.style.display='none'">
+    <!-- Fallback text logo if image missing -->
+    <div class="text-center animate-fade-in">
+      <p class="text-blue-800 font-black text-3xl tracking-tight">SkoolPocket</p>
+      <p class="text-blue-600 text-sm font-semibold mt-1">Student Wallet by SBIS</p>
+    </div>
+    <div class="mt-6">
+      <div class="w-8 h-1 rounded-full" style="background:rgba(255,255,255,.3)">
+        <div class="h-full rounded-full animate-pulse" style="background:rgb(37, 0, 183); width:50%"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────
+       AUTH / LOGIN SCREEN
+  ───────────────────────────────────────────────────────────────── -->
+  <section id="auth-screen" class="screen hidden min-h-screen flex flex-col"
+    style="background: var(--clr-bg)">
+
+    <!-- Top illustration area -->
+    <div class="flex flex-col items-center gap-4 pt-10 pb-6 px-5"
+      style="background: linear-gradient(160deg, #d6e1ff 0%, #7aaefc 100%)">
+      <img src="/src/assets/image/SkoolPocket Logo(1)(1).png" alt="SkoolPocket" width="160"
+        class="drop-shadow-xl"
+        onerror="this.style.display='none'">
+      <div class="text-center">
+        <p class="text-black font-black text-2xl">Welcome to SkoolPocket by SBIS</p>
+        <p class="text-black text-sm">Student Wallet</p>
+      </div>
+      <!-- Avatar -->
+      <img src="/src/assets/image/Male Avatar.jpg" alt="Student"
+        class="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg -mb-10"
+        onerror="this.src='https://ui-avatars.com/api/?name=Student&background=fff&color=1D4ED8&size=80'">
+    </div>
+
+    <!-- Login card -->
+    <div class="mx-5 mt-12 bg-white rounded-3xl p-6 section-card animate-fade-in">
+      <h2 class="font-bold text-lg mb-5" style="color:var(--clr-text)">Sign in to your wallet</h2>
+
+      <form id="checkIn-form" class="flex flex-col gap-4" onsubmit="return false">
+
+        <div>
+          <label class="text-xs font-bold mb-1.5 block uppercase tracking-wide"
+            style="color:var(--clr-text-muted)" for="student-id">
+            Account Number
+          </label>
+          <div class="relative">
+            <i class="bi bi-person-badge absolute left-3 top-1/2 -translate-y-1/2 text-lg"
+              style="color:var(--clr-text-faint)"></i>
+            <input type="text" id="student-id"
+              placeholder="e.g. SBIS001"
+              autocomplete="off"
+              class="w-full pl-10 pr-4 py-3 rounded-xl text-sm font-semibold transition-all"
+              style="background:var(--clr-bg); color:var(--clr-text); border: 1.5px solid var(--clr-border)">
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs font-bold mb-1.5 block uppercase tracking-wide"
+            style="color:var(--clr-text-muted)" for="password">
+            Password
+          </label>
+          <div class="relative">
+            <i class="bi bi-lock absolute left-3 top-1/2 -translate-y-1/2 text-lg"
+              style="color:var(--clr-text-faint)"></i>
+            <input type="password" id="password"
+              placeholder="Enter your password"
+              class="w-full pl-10 pr-4 py-3 rounded-xl text-sm font-semibold transition-all"
+              style="background:var(--clr-bg); color:var(--clr-text); border: 1.5px solid var(--clr-border)">
+          </div>
+        </div>
+
+        <button id="checkinBtn" type="button"
+          class="w-full py-3.5 rounded-xl font-bold text-white text-base mt-2 transition-all active:scale-95 active:opacity-90"
+          style="background: linear-gradient(135deg, var(--clr-blue) 0%, var(--clr-blue-lg) 100%);
+                 box-shadow: 0 4px 20px rgba(29,78,216,.35)">
+          Sign In
+        </button>
+      </form>
+
+      <!-- Login credentials hint
+      <div class="mt-4 p-3 rounded-2xl" style="background:var(--clr-bg)">
+        <p class="text-center text-xs font-bold mb-2" style="color:var(--clr-text-muted)">
+          Demo Credentials
+        </p>
+        <div class="flex flex-col gap-1.5 text-xs" style="color:var(--clr-text-faint)">
+          <div class="flex justify-between">
+            <span>Student 1:</span>
+            <span class="font-bold" style="color:var(--clr-blue)">SBIS001 / sbis001</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Student 2:</span>
+            <span class="font-bold" style="color:var(--clr-blue)">SBIS002 / sbis002</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Admin:</span>
+            <span class="font-bold" style="color:var(--clr-blue)">ADMIN / admin2024</span>
+          </div>
+        </div>
+      </div> -->
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────
+       APP WRAPPER (all inner screens + footer live here)
+  ───────────────────────────────────────────────────────────────── -->
+  <div id="app-wrapper" class="hidden relative">
+
+    <!-- scrollable content area with bottom padding for footer -->
+    <div id="main-scroll" class="overflow-y-auto pb-24" style="height:100dvh">
+
+      <!-- ── HOME SCREEN ────────────────────────────────────────── -->
+      <div id="home-screen" class="hidden animate-fade-in">
+
+        <!-- Top header bar -->
+        <div class="flex justify-between items-center bg-white px-4 pt-5 pb-4"
+          style="box-shadow: 0 2px 12px rgba(30,58,138,.05)">
+          <div>
+            <p class="text-xs font-semibold" style="color:var(--clr-text-faint)" id="home-greeting">Good morning,</p>
+            <p class="font-black text-lg leading-tight" style="color:var(--clr-text)" id="home-username">Loading…</p>
+          </div>
+          <button onclick="navigate('profile')">
+            <img src="/src/assets/image/Male Avatar.jpg" alt="Avatar"
+              class="w-11 h-11 rounded-full object-cover"
+              style="border: 2.5px solid var(--clr-blue)"
+              onerror="this.src='https://ui-avatars.com/api/?name=U&background=1D4ED8&color=fff&size=44'">
+          </button>
+        </div>
+
+        <div class="px-4 pt-4 space-y-4 pb-6">
+
+          <!-- Balance Card -->
+          <div class="balance-card rounded-3xl p-5">
+            <p class="text-blue-200 text-xs font-bold uppercase tracking-widest mb-1">Total Balance</p>
+            <p class="text-white font-black text-4xl leading-tight font-mono" id="home-balance">₦0.00</p>
+
+            <div class="flex gap-3 mt-4">
+              <div class="flex-1 rounded-2xl p-3" style="background:rgba(255,255,255,.13)">
+                <p class="text-blue-200 text-xs font-bold mb-0.5">Inflow</p>
+                <p class="text-white font-bold text-base font-mono" id="home-inflow">₦0</p>
+              </div>
+              <div class="flex-1 rounded-2xl p-3" style="background:rgba(255,255,255,.13)">
+                <p class="text-blue-200 text-xs font-bold mb-0.5">Expenses</p>
+                <p class="font-bold text-base font-mono" style="color:#FCA5A5" id="home-expenses">₦0</p>
+              </div>
+            </div>
+
+            <!-- Quick actions row on balance card -->
+            <div class="flex gap-2 mt-4">
+              <button onclick="navigate('shop')"
+                class="flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 text-white"
+                style="background:rgba(255,255,255,.18)">
+                <i class="bi bi-bag-heart"></i> Shop
+              </button>
+              <button onclick="navigate('history')"
+                class="flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 text-white"
+                style="background:rgba(255,255,255,.18)">
+                <i class="bi bi-clock-history"></i> History
+              </button>
+              <button onclick="navigate('profile')"
+                class="flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 text-white"
+                style="background:rgba(255,255,255,.18)">
+                <i class="bi bi-person-circle"></i> Profile
+              </button>
+            </div>
+          </div>
+
+          <!-- Spending Limit -->
+          <div class="section-card bg-white p-4">
+            <div class="flex justify-between items-center mb-3">
+              <h3 class="font-bold text-sm" style="color:var(--clr-text)">Daily Spending Limit</h3>
+              <span class="text-xs font-bold px-2 py-0.5 rounded-full"
+                style="background:var(--clr-bg); color:var(--clr-blue)">Today</span>
+            </div>
+            <div id="spending-limits-container"></div>
+          </div>
+
+          <!-- Recent Activity -->
+          <div>
+            <div class="flex justify-between items-center mb-3">
+              <h3 class="font-bold text-base" style="color:var(--clr-text)">Recent Activity</h3>
+              <button onclick="navigate('history')"
+                class="text-xs font-bold px-3 py-1 rounded-full"
+                style="background:var(--clr-bg); color:var(--clr-blue)">
+                See all
+              </button>
+            </div>
+            <div id="home-transactions" class="space-y-2"></div>
+          </div>
+
+        </div>
+      </div>
+      <!-- ── END HOME SCREEN ──────────────────────────────────────── -->
+
+      <!-- ── HISTORY SCREEN ─────────────────────────────────────── -->
+      <div id="history-screen" class="hidden animate-fade-in"></div>
+
+      <!-- ── SHOP SCREEN ────────────────────────────────────────── -->
+      <div id="shop-screen" class="hidden animate-fade-in"></div>
+
+      <!-- ── PROFILE SCREEN ─────────────────────────────────────── -->
+      <div id="profile-screen" class="hidden animate-fade-in"></div>
+
+    </div><!-- end #main-scroll -->
+
+    <!-- ── ADMIN SCREEN ─────────────────────────────────────────────
+         Lives OUTSIDE main-scroll so it gets the full viewport.
+         No overflow clipping, no padding-bottom from student screens.
+         Shown only when an admin account logs in.
+    ──────────────────────────────────────────────────────────────── -->
+    <div id="admin-screen" class="hidden"
+      style="position:absolute;inset:0;overflow-y:auto;background:var(--clr-bg);z-index:10"></div>
+
+    <!-- ── GLOBAL FOOTER NAV ──────────────────────────────────────── -->
+    <footer id="app-footer" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-50 hidden">
+      <div class="flex items-center">
+
+        <button class="footer-tab flex-1 flex flex-col items-center gap-0.5 py-3 transition-colors"
+          data-screen="home">
+          <i class="bi bi-house-fill text-xl"></i>
+          <span class="text-[10px] font-bold">Home</span>
+        </button>
+
+        <button class="footer-tab flex-1 flex flex-col items-center gap-0.5 py-3 transition-colors"
+          data-screen="history">
+          <i class="bi bi-clock-history text-xl"></i>
+          <span class="text-[10px] font-bold">History</span>
+        </button>
+
+        <!-- Shop button — emphasized center pill -->
+        <button class="footer-tab flex-1 flex flex-col items-center gap-0.5 py-3 transition-colors"
+          data-screen="shop">
+          <div class="w-12 h-12 rounded-full flex items-center justify-center -mt-5 shadow-lg text-white"
+            style="background:var(--clr-blue); box-shadow: 0 4px 16px rgba(29,78,216,.4)">
+            <i class="bi bi-bag-heart-fill text-xl"></i>
+          </div>
+          <span class="text-[10px] font-bold mt-0.5">Shop</span>
+        </button>
+
+        <button class="footer-tab flex-1 flex flex-col items-center gap-0.5 py-3 transition-colors"
+          data-screen="profile">
+          <i class="bi bi-person-fill text-xl"></i>
+          <span class="text-[10px] font-bold">Profile</span>
+        </button>
+
+      </div>
+    </footer>
+
+  </div><!-- end #app-wrapper -->
+
+  <!-- ─────────────────────────────────────────────────────────────
+       JAVASCRIPT — load in dependency order
+  ───────────────────────────────────────────────────────────────── -->
+  <!-- 1. Data layer — raw seed data (must be first) -->
+  <script src="data/students.js"></script>
+  <script src="data/products.js"></script>
+  <!-- 2. Core state — single source of truth -->
+  <script src="js/state.js"></script>
+  <!-- 3. Storage — must load BEFORE auth.js uses StorageManager -->
+  <script src="js/storage.js"></script>
+  <!-- 4. Utilities — shared helpers (formatMoney, formatDate, showToast) -->
+  <script src="js/utils.js"></script>
+  <!-- 5. Navigation — SPA screen routing -->
+  <script src="js/navigation.js"></script>
+  <!-- 6. Auth — login/logout (depends on StorageManager) -->
+  <script src="js/auth.js"></script>
+  <!-- 7. Screen renderers -->
+  <script src="js/home.js"></script>
+  <script src="js/shop.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/profile.js"></script>
+  <!-- 8. Admin dashboard -->
+  <script src="js/admin.js"></script>
+  <!-- 9. App bootstrap — always last -->
+  <script src="js/app.js"></script>
+
+</body>
+</html>
