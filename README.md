@@ -146,7 +146,7 @@ This project was built as a **real-world school solution** and an **educational 
 
 ## 👨‍💻 Author
 
-Built by [Your Name]
+Built by Kennedy David Kelechi
 
 ---
 
